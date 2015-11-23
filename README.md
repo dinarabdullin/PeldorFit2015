@@ -16,7 +16,7 @@ This is the second version of the program PeldorFit. The changes to the first ve
 A detailed desciption of the program is given in the Manual of the program.
 The program uses two external open-access libraries, Intel TBB (https://www.threadingbuildingblocks.org/) and libconfig (http://www.hyperrealm.com/libconfig/). Both of them are required for compiling the program.
 
-The compiled executable files for the Linux and Windows operation systems can be found at (http://www.schiemann.uni-bonn.de/index.php/software/13-peldorfit).
+The pre-compiled executable files for the Linux and Windows operation systems can be found in the PeldorFitV2.zip archive.
 
 Copyright
 =========
