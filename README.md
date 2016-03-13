@@ -1,6 +1,6 @@
 PeldorFit2015
 =========
-The program PeldorFit performs analysis of the orientation-selective Pulsed ELectron-electron Double Resonance (PELDOR or DEER) signals. The orientation-selective PELDOR signals contain information about the distance between two spin centers in an ensemble of identical molecules and about the relative orientations of these centers. To extract this information, the program uses a simplified model of a spin pair for which several assumptions are taken:
+The program PeldorFit performs an analysis of the orientation-selective Pulsed ELectron-electron Double Resonance (PELDOR or DEER) signals. The orientation-selective PELDOR signals contain information about the distance between two spin centers in an ensemble of identical molecules and about the relative orientations of these centers. To extract this information, the program uses a simplified model of a spin pair for which several assumptions are taken:
 
 1) spins are considered as single-point objects;
 
@@ -12,7 +12,7 @@ The geometry of the model is optimized via genetic algorithm provide the best ma
 
 ***
 
-PeldorFit2015 is the second version of the program PeldorFit. The changes to the first version are:
+PeldorFit2015 is the second version of the program PeldorFit. The changes made to the first version are:
 
 1) The ~2 times faster performance (still in order of hours on usual PC).
 
