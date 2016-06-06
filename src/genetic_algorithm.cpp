@@ -243,7 +243,7 @@ void GeneticAlgorithm::run_optimization(std::vector<exp_signal> const& signals_e
 		std::cout << "Done!" << std::endl;
 	}
 	// Record the calculated for-factors for the PELDOR signals
-	if (output_param.record_symmetric_solutions) {
+	if (output_param.record_form_factor) {
 		std::cout << "  Recording the form-factors of PELDOR signals... ";
 		record_form_factor(*peldor_calc, generation->chromosomes[0], signals_exp, spinA, spinB,
 			               param_numbers, param_modes, output_param);
@@ -375,9 +375,9 @@ void GeneticAlgorithm::record_parameters(Chromosome const& chromosome,
 	file << std::endl;
 	// Fill in the columns with names of parameters and their values
 	const char *param_names[] = { "distance mean 1 (nm)","distance width 1 (nm)","xi mean 1 (deg)","xi width 1 (deg)","phi mean 1 (deg)","phi width 1 (deg)",
-		                          "alpha mean 1 (deg)","alpha width 1 (deg)","betta mean 1 (deg)","betta width 1 (deg)","gamma mean 1 (deg)","gamma width 1 (deg)",
+		                          "alpha mean 1 (deg)","alpha width 1 (deg)","beta mean 1 (deg)","beta width 1 (deg)","gamma mean 1 (deg)","gamma width 1 (deg)",
 								  "distance mean 2 (nm)", "distance width 2 (nm)", "xi mean 2 (deg)", "xi width 2 (deg)", "phi mean 2 (deg)", "phi width 2 (deg)",
-								  "alpha mean 2 (deg)", "alpha width 2 (deg)", "betta mean 2 (deg)", "betta width 2 (deg)", "gamma mean 2 (deg)", "gamma width 2 (deg)",
+								  "alpha mean 2 (deg)", "alpha width 2 (deg)", "beta mean 2 (deg)", "beta width 2 (deg)", "gamma mean 2 (deg)", "gamma width 2 (deg)",
 								  "ratio 1 to 2", "J mean (MHz)", "J width (MHz)", "inv. efficiency" };
 	for (size_t i = 0; i < 28; ++i) {
 		file << std::left << std::setw(col_width) << param_names[i];
@@ -416,170 +416,94 @@ void GeneticAlgorithm::record_symmetric_parameters(PeldorCalculator const& peldo
 												   genetic_parameters const& genetic_param,
 												   output_parameters const& output_param) const
 {
-
-	// Read out the optimized values of angles
-	double xi(0), phi(0), alpha(0), betta(0), gamma(0);
-	if (param_numbers[2] != -1) xi = chromosome.genes[param_numbers[2]];
-	if (param_numbers[4] != -1) phi = chromosome.genes[param_numbers[4]];
-	if (param_numbers[6] != -1) alpha = chromosome.genes[param_numbers[6]];
-	if (param_numbers[8] != -1) betta = chromosome.genes[param_numbers[8]];
-	if (param_numbers[10] != -1) gamma = chromosome.genes[param_numbers[10]];
-	// Create the array for the symmetry-related sets of parameters
+	// Create  arrays for the symmetry-related parameters
 	const size_t n_sym = 16;
 	std::vector<double> xis; xis.reserve(n_sym);
 	std::vector<double> phis; phis.reserve(n_sym);
 	std::vector<double> alphas; alphas.reserve(n_sym);
-	std::vector<double> bettas; bettas.reserve(n_sym);
+	std::vector<double> betas; betas.reserve(n_sym);
 	std::vector<double> gammas; gammas.reserve(n_sym);
-	xis.push_back(xi);
-	phis.push_back(phi);
-	alphas.push_back(alpha);
-	bettas.push_back(betta);
-	gammas.push_back(gamma);
-	// Calculate the orientation of the distance vector
-	std::vector<double> dist_vec; dist_vec.reserve(3);
-	dist_vec.push_back( cos(phi)*sin(xi) );
-	dist_vec.push_back( sin(phi)*sin(xi) );
-	dist_vec.push_back( cos(xi) );
-	// Calculate the rotation matrix from frame A to frame B
-	ZXZEulerRM const* R = new ZXZEulerRM(alpha,betta,gamma);
+	// Read out the optimized values of parameters
+	double xi(0), phi(0), alpha(0), beta(0), gamma(0);
+	if (param_numbers[2] != -1) xi = chromosome.genes[param_numbers[2]];
+	if (param_numbers[4] != -1) phi = chromosome.genes[param_numbers[4]];
+	if (param_numbers[6] != -1) alpha = chromosome.genes[param_numbers[6]];
+	if (param_numbers[8] != -1) beta = chromosome.genes[param_numbers[8]];
+	if (param_numbers[10] != -1) gamma = chromosome.genes[param_numbers[10]];
+	// Distance vector in the frame A
+	std::vector<double> V; V.reserve(3);
+	V.push_back(cos(phi)*sin(xi));
+	V.push_back(sin(phi)*sin(xi));
+	V.push_back(cos(xi));
+	// Rotation matrix  frame A -> frame B
+	ZXZEulerRM const* R = new ZXZEulerRM(alpha,beta,gamma);
 	// Create the 180° rotation matrices
-	ZXZEulerRM const* Rx = new ZXZEulerRM(0.0, PI, 0.0);
-	ZXZEulerRM const* Ry = new ZXZEulerRM(PI, PI, 0.0);
-	ZXZEulerRM const* Rz = new ZXZEulerRM(PI, 0.0, 0.0);
+	ZXZEulerRM const* R1 = new ZXZEulerRM(0.0, 0.0, 0.0);
+	ZXZEulerRM const* Rx = new ZXZEulerRM(0.0,  PI, 0.0);
+	ZXZEulerRM const* Ry = new ZXZEulerRM( PI,  PI, 0.0);
+	ZXZEulerRM const* Rz = new ZXZEulerRM( PI, 0.0, 0.0);
+	// List of possible transformations
+	std::vector<ZXZEulerRM const*> Ra; Ra.reserve(4);
+	Ra.push_back(R1);
+	Ra.push_back(Rx);
+	Ra.push_back(Ry);
+	Ra.push_back(Rz);
+	std::vector<ZXZEulerRM const*> Rb; Rb.reserve(4);
+	Rb.push_back(R1);
+	Rb.push_back(Rx);
+	Rb.push_back(Ry);
+	Rb.push_back(Rz);
 	// Calculate the symmetry-related sets of parameters
-	std::vector<double> dist_vec_sym; dist_vec_sym.reserve(3);
-	double xi_sym(0), phi_sym(0), alpha_sym(0), betta_sym(0), gamma_sym(0);
-	double R_sym[3][3] = {{0,0,0}, {0,0,0}, {0,0,0}};
-	// Rotation of spin A about gx
-	//----------------------------
-	dist_vec_sym = Rx->rotate_vector(dist_vec);
-	xi_sym = acos(dist_vec_sym[2]);
-    if ((xi_sym == 0) || (xi_sym == PI)) {
-		phi_sym = 0;
-	}
-    else {
-        if ( dist_vec_sym[0] == 0 ) {
-            if ( dist_vec_sym[1] == sin(xi_sym) ) phi_sym = 0.5*PI;
-            else                                  phi_sym = -0.5*PI;
-		}
-        else phi_sym = atan2(dist_vec_sym[1], dist_vec_sym[0]);
-	}
-	if (phi_sym < 0) phi_sym += 2*PI;
-	xis.push_back(xi_sym);
-	phis.push_back(phi_sym);
-	alphas.push_back(alpha);
-	bettas.push_back(betta);
-	gammas.push_back(gamma);
-	dist_vec_sym.clear();
-	// Rotation of spin A about gy
-	//----------------------------
-	dist_vec_sym = Ry->rotate_vector(dist_vec);
-	xi_sym = acos(dist_vec_sym[2]);
-    if ((xi_sym == 0) || (xi_sym == PI)) {
-		phi_sym = 0;
-	}
-    else {
-        if ( dist_vec_sym[0] == 0 ) {
-            if ( dist_vec_sym[1] == sin(xi_sym) ) phi_sym = 0.5*PI;
-            else                                  phi_sym = -0.5*PI;
-		}
-        else phi_sym = atan2( dist_vec_sym[1], dist_vec_sym[0] );
-	}
-	if (phi_sym < 0) phi_sym += 2*PI;
-	xis.push_back(xi_sym);
-	phis.push_back(phi_sym);
-	alphas.push_back(alpha);
-	bettas.push_back(betta);
-	gammas.push_back(gamma);
-	dist_vec_sym.clear();
-	// Rotation of spin A about gz
-	//----------------------------
-	dist_vec_sym = Rz->rotate_vector(dist_vec);
-	xi_sym = acos(dist_vec_sym[2]);
-    if ((xi_sym == 0) || (xi_sym == PI)) {
-		phi_sym = 0;
-	}
-    else {
-        if ( dist_vec_sym[0] == 0 ) {
-            if ( dist_vec_sym[1] == sin(xi_sym) ) phi_sym = 0.5*PI;
-            else                                  phi_sym = -0.5*PI;
-		}
-        else phi_sym = atan2( dist_vec_sym[1], dist_vec_sym[0] );
-	}
-	if (phi_sym < 0) phi_sym += + 2*PI;
-	xis.push_back(xi_sym);
-	phis.push_back(phi_sym);
-	alphas.push_back(alpha);
-	bettas.push_back(betta);
-	gammas.push_back(gamma);
-	dist_vec_sym.clear();
-	// Rotation of spin B about gx
-	//----------------------------
-	R->multiply_by_matrix(Rx->R, R_sym);
-	betta_sym = acos(R_sym[2][2]);
-    if (betta_sym == 0) {
-        gamma_sym = 0;
-        alpha_sym = atan2(R_sym[1][0], R_sym[1][1]);
-	}
-    else {
-        gamma_sym = atan2(R_sym[2][0]/sin(betta_sym), R_sym[2][1]/sin(betta_sym));
-        alpha_sym = atan2(R_sym[0][2]/sin(betta_sym), -R_sym[1][2]/sin(betta_sym));
-	}
-    if (alpha_sym < 0) alpha_sym += 2*PI;
-    if (gamma_sym < 0) gamma_sym += 2*PI;
-	xis.push_back(xi);
-	phis.push_back(phi);
-	alphas.push_back(alpha_sym);
-	bettas.push_back(betta_sym);
-	gammas.push_back(gamma_sym);
-	// Rotation of spin B about gy
-	//----------------------------
-	R->multiply_by_matrix(Ry->R, R_sym);
-	betta_sym = acos(R_sym[2][2]);
-    if (betta_sym == 0) {
-        gamma_sym = 0;
-        alpha_sym = atan2(R_sym[1][0], R_sym[1][1]);
-	}
-    else {
-        gamma_sym = atan2(R_sym[2][0]/sin(betta_sym), R_sym[2][1]/sin(betta_sym));
-        alpha_sym = atan2(R_sym[0][2]/sin(betta_sym), -R_sym[1][2]/sin(betta_sym));
-	}
-    if (alpha_sym < 0) alpha_sym += 2*PI;
-    if (gamma_sym < 0) gamma_sym += 2*PI;
-	xis.push_back(xi);
-	phis.push_back(phi);
-	alphas.push_back(alpha_sym);
-	bettas.push_back(betta_sym);
-	gammas.push_back(gamma_sym);
-	// Rotation of spin B about gz
-	//----------------------------
-	R->multiply_by_matrix(Rz->R, R_sym);
-	betta_sym = acos(R_sym[2][2]);
-    if (betta_sym == 0) {
-        gamma_sym = 0;
-        alpha_sym = atan2(R_sym[1][0], R_sym[1][1]);
-	}
-    else {
-        gamma_sym = atan2(R_sym[2][0]/sin(betta_sym), R_sym[2][1]/sin(betta_sym));
-        alpha_sym = atan2(R_sym[0][2]/sin(betta_sym), -R_sym[1][2]/sin(betta_sym));
-	}
-    if (alpha_sym < 0) alpha_sym += 2*PI;
-    if (gamma_sym < 0) gamma_sym += 2*PI;
-	xis.push_back(xi);
-	phis.push_back(phi);
-	alphas.push_back(alpha_sym);
-	bettas.push_back(betta_sym);
-	gammas.push_back(gamma_sym);
-	// Combined rotations
-	//----------------------------
-	for (size_t i = 1; i < 4; ++i) {
-		for (size_t j = 4; j < 7; ++j) {
-			xis.push_back(xis[i]);
-			phis.push_back(phis[i]);
-			alphas.push_back(alphas[j]);
-			bettas.push_back(bettas[j]);
-			gammas.push_back(gammas[j]);
+	std::vector<double> V_f; V_f.reserve(3);
+	double R_f1[3][3] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 } };
+	double R_f[3][3] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 } };
+	double xi_f(0), phi_f(0), alpha_f(0), beta_f(0), gamma_f(0);
+	for (size_t i = 0; i < 4; ++i) {
+		for (size_t j = 0; j < 4; ++j) {
+			// Calculate a product Vf = Ra.T * V
+			V_f = Ra[i]->RxV(V, true);
+			// Calculate a product Rf2 = Ra.T * Rf1 = Ra.T * R * Rb
+			R->RxM(Rb[j]->R, R_f1, false);
+			Ra[i]->RxM(R_f1, R_f, true);
+			// Calculate xi and phi
+			xi_f = acos(V_f[2]);
+			if ((xi_f == 0) || (xi_f == PI)) {
+				phi_f = 0;
+			}
+			else {
+				if (V_f[0] == 0) {
+					if (V_f[1] == sin(xi_f)) {
+						phi_f = 0.5*PI;
+					}
+					else {
+						phi_f = -0.5*PI;
+					}
+				}
+				else {
+					phi_f = atan2(V_f[1], V_f[0]);
+				}
+			}
+			if (xi_f < 0) xi_f += PI;
+			if (phi_f < 0) phi_f += 2*PI;
+			// Calculate alpha, beta, gamma
+			beta_f = acos(R_f[2][2]);
+			if (beta_f == 0) {
+				gamma_f = 0;
+				alpha_f = atan2(R_f[1][0], R_f[1][1]);
+			}
+			else {
+				gamma_f = atan2(R_f[2][0] / sin(beta_f), R_f[2][1] / sin(beta_f));
+				alpha_f = atan2(R_f[0][2] / sin(beta_f), -R_f[1][2] / sin(beta_f));
+			}
+			if (alpha_f < 0) alpha_f += 2*PI;
+			if (beta_f < 0)  beta_f += PI;
+			if (gamma_f < 0) gamma_f += 2*PI;
+			// Store the calculated angles
+			xis.push_back(xi_f);
+			phis.push_back(phi_f);
+			alphas.push_back(alpha_f);
+			betas.push_back(beta_f);
+			gammas.push_back(gamma_f);
 		}
 	}
 	// Store the calculated symmetry-related sets of parameters in a vector
@@ -589,7 +513,7 @@ void GeneticAlgorithm::record_symmetric_parameters(PeldorCalculator const& peldo
 		if (param_numbers[2] != -1)  genes_sym[i][param_numbers[2]] = xis[i];
 		if (param_numbers[4] != -1)  genes_sym[i][param_numbers[4]] = phis[i];
 		if (param_numbers[6] != -1)  genes_sym[i][param_numbers[6]] = alphas[i];
-		if (param_numbers[8] != -1)  genes_sym[i][param_numbers[8]] = bettas[i];
+		if (param_numbers[8] != -1)  genes_sym[i][param_numbers[8]] = betas[i];
 		if (param_numbers[10] != -1) genes_sym[i][param_numbers[10]] = gammas[i];
 	}
 	// Calculate the score for the symmetry-related sets of parameters
@@ -610,13 +534,28 @@ void GeneticAlgorithm::record_symmetric_parameters(PeldorCalculator const& peldo
 	size_t const col_width1 = 30;
 	size_t const col_width2 = 10;
 	file << std::left << std::setw(col_width1) << "Parameter";
-	for (size_t i = 0; i < n_sym; ++i) file << std::left << std::setw(col_width2) << "Value";
+	file << std::left << std::setw(col_width2) << "A:1_B:1";
+	file << std::left << std::setw(col_width2) << "A:1_B:Rx";
+	file << std::left << std::setw(col_width2) << "A:1_B:Ry";
+	file << std::left << std::setw(col_width2) << "A:1_B:Rz";
+	file << std::left << std::setw(col_width2) << "A:Rx_B:1";
+	file << std::left << std::setw(col_width2) << "A:Rx_B:Rx";
+	file << std::left << std::setw(col_width2) << "A:Rx_B:Ry";
+	file << std::left << std::setw(col_width2) << "A:Rx_B:Rz";
+	file << std::left << std::setw(col_width2) << "A:Ry_B:1";
+	file << std::left << std::setw(col_width2) << "A:Ry_B:Rx";
+	file << std::left << std::setw(col_width2) << "A:Ry_B:Ry";
+	file << std::left << std::setw(col_width2) << "A:Ry_B:Rz";
+	file << std::left << std::setw(col_width2) << "A:Rz_B:1";
+	file << std::left << std::setw(col_width2) << "A:Rz_B:Rx";
+	file << std::left << std::setw(col_width2) << "A:Rz_B:Ry";
+	file << std::left << std::setw(col_width2) << "A:Rz_B:Rz";
 	file << std::endl;
 	// Fill in the columns with names of parameters and their values
 	const char *param_names[] = { "distance mean 1 (nm)","distance width 1 (nm)","xi mean 1 (deg)","xi width 1 (deg)","phi mean 1 (deg)","phi width 1 (deg)",
-		                          "alpha mean 1 (deg)","alpha width 1 (deg)","betta mean 1 (deg)","betta width 1 (deg)","gamma mean 1 (deg)","gamma width 1 (deg)",
+		                          "alpha mean 1 (deg)","alpha width 1 (deg)","beta mean 1 (deg)","beta width 1 (deg)","gamma mean 1 (deg)","gamma width 1 (deg)",
 								  "distance mean 2 (nm)", "distance width 2 (nm)", "xi mean 2 (deg)", "xi width 2 (deg)", "phi mean 2 (deg)", "phi width 2 (deg)",
-								  "alpha mean 2 (deg)", "alpha width 2 (deg)", "betta mean 2 (deg)", "betta width 2 (deg)", "gamma mean 2 (deg)", "gamma width 2 (deg)",
+								  "alpha mean 2 (deg)", "alpha width 2 (deg)", "beta mean 2 (deg)", "beta width 2 (deg)", "gamma mean 2 (deg)", "gamma width 2 (deg)",
 								  "ratio 1 to 2", "J mean (MHz)", "J width (MHz)", "inv. efficiency" };
 	for (size_t i = 0; i < 28; ++i) {
 		file << std::left << std::setw(col_width1) << param_names[i];
@@ -761,6 +700,14 @@ void GeneticAlgorithm::record_error_plot(PeldorCalculator const& peldor_calc,
 		// Score the generation
 		generation_ep->score_chromosomes(peldor_calc, signals_exp, spinA, spinB, param_numbers, param_modes, genetic_param);
 		generation_ep->sort_chromosomes();
+		//// Modified! Save fits
+		//output_parameters output_param_ep(output_param);
+		//for (size_t j = 0; j < n_vars; ++j) {
+		//	std::stringstream nPlot;
+		//	nPlot << j;
+		//	output_param_ep.directory = output_param.directory + nPlot.str();
+		//	record_fit(peldor_calc, generation_ep->chromosomes[j], signals_exp, spinA, spinB, param_numbers, param_modes, output_param_ep);
+		//}
 		// Create & open a file
 		std::ostringstream filename;
 		filename << output_param.directory << "error_plot";

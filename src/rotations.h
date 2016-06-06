@@ -10,12 +10,12 @@ public:
 	double R[3][3];
 	double RT[3][3];
 
-	ZXZEulerRM(const double& alpha, const double& betta, const double& gamma)
+	ZXZEulerRM(const double& alpha, const double& beta, const double& gamma)
 	{
 		double c1 = cos(alpha);
 		double s1 = sin(alpha);
-		double c2 = cos(betta);
-		double s2 = sin(betta);
+		double c2 = cos(beta);
+		double s2 = sin(beta);
 		double c3 = cos(gamma);
 		double s3 = sin(gamma);
 		// Rotation matrix (active rotation)
@@ -40,26 +40,33 @@ public:
 		RT[2][2] = R[2][2];
 	}
 
-	std::vector<double> rotate_vector(std::vector<double> const& v) const 
+	std::vector<double> RxV(std::vector<double> const& v, bool const& t) const 
 	{
-		std::vector<double> v_rotated; v_rotated.reserve(3);
-		double v_comp(0);
+		std::vector<double> p; p.reserve(3);
 		for (size_t i = 0; i < 3; i++) {
-			v_comp = RT[i][0] * v[0] + RT[i][1] * v[1] + RT[i][2] * v[2];
-			v_rotated.push_back(v_comp);
+			if (t) {
+				p.push_back(RT[i][0] * v[0] + RT[i][1] * v[1] + RT[i][2] * v[2]);
+			}
+			else {
+				p.push_back(R[i][0] * v[0] + R[i][1] * v[1] + R[i][2] * v[2]);
+			}
 		}
-		return v_rotated;
+		return p;
 	}
 
-	void multiply_by_matrix(double const M[3][3], double A[3][3]) const
+	void RxM(double const M[3][3], double P[3][3], bool const& t) const
 	{
 		for (size_t i = 0; i < 3; ++i) {
 			for (size_t j = 0; j < 3; ++j) {
-				A[i][j] = R[i][0] * M[0][j] + R[i][1] * M[1][j] +  R[i][2] * M[2][j];
+				if (t) {
+					P[i][j] = RT[i][0] * M[0][j] + RT[i][1] * M[1][j] + RT[i][2] * M[2][j];
+				}
+				else {
+					P[i][j] = R[i][0] * M[0][j] + R[i][1] * M[1][j] + R[i][2] * M[2][j];
+				}
 			}
 		}
 	}
-
 };
 
 #endif

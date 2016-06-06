@@ -230,7 +230,7 @@ std::vector<double> PeldorCalculator::calculate_peldor_signal(std::vector<double
 	for (size_t t = 0; t < n_points; ++t) signal_calc_array[t] = 0.0;
 	// Ititialize some variables
 	std::uniform_real_distribution<> uniform_distr(0.0, 1.0);
-	double dist(0), xi(0), phi(0), alpha(0), betta(0), gamma(0);
+	double dist(0), xi(0), phi(0), alpha(0), beta(0), gamma(0);
 	double jc(0);
 	std::vector<double> projB; projB.reserve(3);
 	double gFactorB(0);
@@ -258,7 +258,7 @@ std::vector<double> PeldorCalculator::calculate_peldor_signal(std::vector<double
 			xi    = set_param_value(model_param,param_numbers[2],param_numbers[3],param_modes[3],urng);
 			phi   = set_param_value(model_param,param_numbers[4],param_numbers[5],param_modes[5],urng);
 			alpha = set_param_value(model_param,param_numbers[6],param_numbers[7],param_modes[7],urng);
-			betta = set_param_value(model_param,param_numbers[8],param_numbers[9],param_modes[9],urng);
+			beta = set_param_value(model_param,param_numbers[8],param_numbers[9],param_modes[9],urng);
 			gamma = set_param_value(model_param,param_numbers[10],param_numbers[11],param_modes[11],urng);
 			jc    = set_param_value(model_param,param_numbers[25],param_numbers[26],param_modes[26],urng);
 		}
@@ -267,14 +267,14 @@ std::vector<double> PeldorCalculator::calculate_peldor_signal(std::vector<double
 			xi    = set_param_value(model_param,param_numbers[14],param_numbers[15],param_modes[3],urng);
 			phi   = set_param_value(model_param,param_numbers[16],param_numbers[17],param_modes[5],urng);
 			alpha = set_param_value(model_param,param_numbers[18],param_numbers[19],param_modes[7],urng);
-			betta = set_param_value(model_param,param_numbers[20],param_numbers[21],param_modes[9],urng);
+			beta = set_param_value(model_param,param_numbers[20],param_numbers[21],param_modes[9],urng);
 			gamma = set_param_value(model_param,param_numbers[22],param_numbers[23],param_modes[11],urng);
 			jc    = set_param_value(model_param,param_numbers[25],param_numbers[26],param_modes[26],urng);
 		}
 		// Rotation matrix between the spin A and spin B coordinate systems
-		ZXZEulerRM const* rotationMatrix = new ZXZEulerRM(alpha,betta,gamma);
+		ZXZEulerRM const* rotationMatrix = new ZXZEulerRM(alpha,beta,gamma);
 		// Compute the orientation of the magnetic field in the frame of the spin B
-		projB = rotationMatrix->rotate_vector(field_orient[f]);
+		projB = rotationMatrix->RxV(field_orient[f], true);
 		// Compute the effective g-factor of the spin B
 		gFactorB = spinB.calculate_gfactor(projB);
 		// Compute resonance frequencies of the spin B
@@ -432,7 +432,7 @@ std::vector<double> PeldorCalculator::calculate_form_factor(std::vector<double> 
 {
 	double form_factor_array[90] = {0};
 	std::uniform_real_distribution<> uniform_distr(0.0, 1.0);
-	double dist(0), xi(0), phi(0), alpha(0), betta(0), gamma(0);
+	double dist(0), xi(0), phi(0), alpha(0), beta(0), gamma(0);
 	std::vector<double> projB; projB.reserve(3);
 	double gFactorB(0);
 	std::vector<double> resfreqB; resfreqB.reserve(spinB.Ncomp);
@@ -451,7 +451,7 @@ std::vector<double> PeldorCalculator::calculate_form_factor(std::vector<double> 
 			xi    = set_param_value(model_param,param_numbers[2],param_numbers[3],param_modes[3],urng);
 			phi   = set_param_value(model_param,param_numbers[4],param_numbers[5],param_modes[5],urng);
 			alpha = set_param_value(model_param,param_numbers[6],param_numbers[7],param_modes[7],urng);
-			betta = set_param_value(model_param,param_numbers[8],param_numbers[9],param_modes[9],urng);
+			beta = set_param_value(model_param,param_numbers[8],param_numbers[9],param_modes[9],urng);
 			gamma = set_param_value(model_param,param_numbers[10],param_numbers[11],param_modes[11],urng);
 		}
 		else {
@@ -459,13 +459,13 @@ std::vector<double> PeldorCalculator::calculate_form_factor(std::vector<double> 
 			xi    = set_param_value(model_param,param_numbers[14],param_numbers[15],param_modes[3],urng);
 			phi   = set_param_value(model_param,param_numbers[16],param_numbers[17],param_modes[5],urng);
 			alpha = set_param_value(model_param,param_numbers[18],param_numbers[19],param_modes[7],urng);
-			betta = set_param_value(model_param,param_numbers[20],param_numbers[21],param_modes[9],urng);
+			beta = set_param_value(model_param,param_numbers[20],param_numbers[21],param_modes[9],urng);
 			gamma = set_param_value(model_param,param_numbers[22],param_numbers[23],param_modes[11],urng);
 		}
 		// Rotation matrix between the spin A and spin B coordinate systems
-		ZXZEulerRM const* rotationMatrix = new ZXZEulerRM(alpha,betta,gamma);
+		ZXZEulerRM const* rotationMatrix = new ZXZEulerRM(alpha,beta,gamma);
 		// Compute the orientation of the magnetic field in the frame of the spin B
-		projB = rotationMatrix->rotate_vector(field_orient[f]);
+		projB = rotationMatrix->RxV(field_orient[f],true);
 		// Compute the effective g-factor of the spin B
 		gFactorB = spinB.calculate_gfactor(projB);
 		// Compute resonance frequencies of the spin B
