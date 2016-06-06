@@ -1,7 +1,8 @@
 function PeldorFitErrorPlot(varargin)
-% This function generates the error plots for all geometric parameters 
-% used by the program PeldorFit 
-% varargin: Here the user can specify the maximal value for colorbar
+% This function generates RMSD plots for the PeldorFit fitting parameters
+% varargin: 
+% 1st parameter: a maximal RMSD value
+% 2nd parameter: a minimal RMSD value
 
     % The names of the PeldorFit data files
     fileName_r     = 'error_plot_1_2.dat  ';
@@ -10,20 +11,21 @@ function PeldorFitErrorPlot(varargin)
     fileName_alpha = 'error_plot_7_8.dat  ';
     fileName_beta  = 'error_plot_9_10.dat ';
     fileName_gamma = 'error_plot_11_12.dat';
-    fileNames = [fileName_r; fileName_xi; fileName_phi; fileName_alpha; fileName_beta; fileName_gamma]; 
+    fileNames = [fileName_r; fileName_xi; fileName_phi; ...
+                 fileName_alpha; fileName_beta; fileName_gamma]; 
     % Figure settings 
     nPlots = 0;
     plots = []; 
     alignement = [1, 1; 1, 2; 1, 3; 2, 2; 2, 3; 2, 3];
     % Optional parameter
     numvarargs = length(varargin);
-    if (numvarargs > 1)
+    if (numvarargs > 2)
         error('myfuns:somefun2Alt:TooManyInputs', ...
               'Too many input parameters');
     end
-    optargs = {0};
+    optargs = {0, 0};
     optargs(1:numvarargs) = varargin;
-    [zmax_user] = optargs{:};
+    [zmax_user, zmin_user] = optargs{:};
     
     [fileName, pathName] = uigetfile('*.DAT','File Selector');
     if ~isequal(fileName,0)
@@ -63,6 +65,10 @@ function PeldorFitErrorPlot(varargin)
             zmax = str2double(zmax_user);
         end
         class(zmax_user)
+        if (str2double(zmin_user) > 0)
+            zmin = str2double(zmin_user);
+        end
+        class(zmin_user)
         
         % Create a figure
         hfig = figure(1);
@@ -85,61 +91,68 @@ function PeldorFitErrorPlot(varargin)
             [XI, YI] = meshgrid(xsteps, ysteps);
             ZI = griddata(x,y,z,XI,YI);
             % Make a plot
-            ax(count) = subplot(alignement(nPlots,1),alignement(nPlots,2),count);
-            count = count + 1;
+            ax(count) = subplot(alignement(nPlots,1),alignement(nPlots,2)+1,count);
+            if count == alignement(nPlots,2)
+                count = count + 2;
+            else
+                count = count + 1;
+            end
             pcolor(XI, YI, ZI);
             colormap(flipud(jet))
             shading interp
             axis square
             set(gca,'clim',[zmin, zmax])
-            set(gca,'FontSize',24,'linewidth',1,'TickDir','out','Box','on')
+            set(gca,'FontSize',28,'linewidth',1,'TickDir','out','Box','on')
+            % Calculate tick values
             if (fn == 1)
-                xlabel('\it\mu\rm (nm)');
-                ylabel('\it\sigma\rm (nm)');
-                xlim([0.5*round(xmin/0.5),0.5*round(xmax/0.5)]);
-                ylim([0.1*round(ymin/0.1),0.1*round(ymax/0.1)]);
-                set(gca,'XTick',[0.5*round(xmin/0.5):0.5:0.5*round(xmax/0.5)], ...
-                        'YTick',[0.1*round(ymin/0.1):0.2:0.1*round(ymax/0.1)]);
+                xlow = 0.5*round(xmin/0.5);
+                xhigh = 0.5*round(xmax/0.5);
+                dx = 0.5*(xhigh-xlow);
+                ylow = 0.1*round(ymin/0.1);
+                yhigh = 0.1*round(ymax/0.1);
+                dy = 0.5*(yhigh-ylow);
+                xlim([xlow,xhigh]);
+                ylim([ylow,yhigh]);
+                set(gca,'XTick',[xlow:dx:xhigh], 'YTick',[ylow:dy:yhigh]);
+            else
+                xlow = 10*round(xmin/10);
+                xhigh = 10*round(xmax/10);
+                dx = 0.5*(xhigh-xlow);
+                ylow = 10*round(ymin/10);
+                yhigh = 10*round(ymax/10);
+                dy = 0.5*(yhigh-ylow);
+                xlim([xlow,xhigh]);
+                ylim([ylow,yhigh]);
+                set(gca,'XTick',[xlow:dx:xhigh], 'YTick',[ylow:dy:yhigh]);
+            end
+            % Axes labels
+            if (fn == 1)
+                xlabel('\itr\rm (nm)');
+                ylabel('\rm\Delta\itr\rm (nm)');
             end
             if (fn == 2)
                 xlabel('\it\xi\rm °');
                 ylabel('\rm\Delta\it\xi\rm °');
-                xlim([0,90]);
-                ylim([0,90]);
-                set(gca,'XTick',[0:30:90],'YTick',[0:30:90]);
             end
             if (fn == 3)
                 xlabel('\it\phi\rm °');
                 ylabel('\rm\Delta\it\phi\rm °');
-                xlim([0,180]);
-                ylim([0,180]);
-                set(gca,'XTick',[0:60:180],'YTick',[0:60:180]);
             end
             if (fn==4)
                 xlabel('\it\alpha\rm °');
                 ylabel('\rm\Delta\it\alpha\rm °');
-                xlim([0,180]);
-                ylim([0,180]);
-                set(gca,'XTick',[0:60:180],'YTick',[0:60:180]);
             end
             if (fn==5)
                 xlabel('\it\beta\rm °');
                 ylabel('\rm\Delta\it\beta\rm °');
-                xlim([0,90]);
-       
-                ylim([0,90]);
-                set(gca,'XTick',[0:30:90],'YTick',[0:30:90]);
             end
             if (fn==6)
                 xlabel('\it\gamma\rm °');
                 ylabel('\rm\Delta\it\gamma\rm °');
-                xlim([0,180]);
-                ylim([0,180]);
-                set(gca,'XTick',[0:60:180],'YTick',[0:60:180]);
             end
         end
-        hcolorbar = colorbar('FontSize',24);
-        set(hcolorbar,'Position',[0.93 0.25 0.025 0.5]);
-        set(get(hcolorbar,'title'),'string','\itRMSD','FontSize',24);
+        hcolorbar = colorbar('FontSize',28);
+        set(hcolorbar,'Position',[0.80 0.25 0.025 0.5]);
+        set(get(hcolorbar,'title'),'string','\itRMSD','FontSize',28);
     end
 end
