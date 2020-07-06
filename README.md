@@ -1,5 +1,10 @@
 PeldorFit2015
 =========
+Note: This is the older version of the program PeldorFit. The latest version of the program can be found at:
+https://github.com/dinarabdullin/PeldorFit2019
+
+Description
+=========
 The program PeldorFit is developed for analysis of orientation-selective Pulsed ELectron-electron Double Resonance (PELDOR or DEER) data.
 
 ***
